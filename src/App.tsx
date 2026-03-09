@@ -55,6 +55,9 @@ export default function App() {
   const [reason, setReason] = useState('')
   const [linkedin, setLinkedin] = useState('')
   const [result, setResult] = useState<ScreeningResult | null>(null)
+
+  const [inputPrompt, setInputPrompt] = useState('')
+
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [scanLine, setScanLine] = useState(0)
@@ -71,15 +74,24 @@ export default function App() {
     setResult(null)
     setError(null)
     try {
+      const body = JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1000,
+        system: SYSTEM_PROMPT,
+        messages: [{ role: 'user', content: buildUserMessage(country, nationality, reason, linkedin) }]
+      })
+      setInputPrompt(body)
+      setResult({
+        verdict: 'MANUAL REVIEW',
+        reason: 'Defaulting to manual review while processing the screening.',
+        flags: [],
+        confidence: 'LOW',
+        detail: 'This is a fallback result. The actual screening result will be updated shortly.'
+      })
       const res = await fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          model: 'claude-sonnet-4-20250514',
-          max_tokens: 1000,
-          system: SYSTEM_PROMPT,
-          messages: [{ role: 'user', content: buildUserMessage(country, nationality, reason, linkedin) }]
-        })
+        body: body
       })
       const data = await res.json()
       const text = data.content?.[0]?.text || ''
@@ -393,6 +405,30 @@ export default function App() {
                   <p style={{ margin: 0, fontSize: 13, color: '#9BAEC0', lineHeight: 1.7 }}>{result.detail}</p>
                 </div>
               )}
+
+              {/* Input prompt */}
+              <details style={{ marginBottom: 24, fontSize: 12, color: '#607080' }}>
+                <summary style={{ cursor: 'pointer', color: '#1E90FF', letterSpacing: 2 }}>
+                  View AI Input Prompt
+                </summary>
+                <pre
+                  style={{
+                    marginTop: 12,
+                    padding: '16px',
+                    background: 'rgba(20,35,55,0.6)',
+                    border: '1px solid rgba(30,144,255,0.2)',
+                    borderRadius: 4,
+                    color: '#C8D8E8',
+                    fontFamily: "'IBM Plex Mono', monospace",
+                    fontSize: 11,
+                    overflowX: 'auto'
+                  }}
+                >
+                  {inputPrompt || SYSTEM_PROMPT + '\n\n' + buildUserMessage(country, nationality, reason, linkedin)}
+                </pre>
+              </details>
+
+              {/* Reset button */}
 
               <button
                 onClick={reset}
